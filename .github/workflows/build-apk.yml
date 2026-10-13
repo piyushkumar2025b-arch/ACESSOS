@@ -37,7 +37,7 @@ jobs:
         with:
           fetch-depth: 0
 
-      - name: Set up Java JDK 21
+      - name: Set up Java JDK 21 (Temurin)
         uses: actions/setup-java@v4
         with:
           distribution: 'temurin'
@@ -54,7 +54,6 @@ jobs:
           echo "ANDROID_SDK_ROOT=$ANDROID_SDK_ROOT"
           ls -la "$ANDROID_SDK_ROOT" || true
 
-          # Accept licenses and install the required modern SDK packages
           yes | "$ANDROID_SDK_ROOT/cmdline-tools/latest/bin/sdkmanager" --licenses
           yes | "$ANDROID_SDK_ROOT/cmdline-tools/latest/bin/sdkmanager" \
             "platform-tools" \
@@ -71,6 +70,7 @@ jobs:
           if [ ! -f .env ]; then
             if [ -f .env.example ]; then
               cp .env.example .env
+              echo "Created .env from .env.example"
             else
               touch .env
             fi
@@ -94,9 +94,15 @@ jobs:
             fi
           fi
 
-      - name: Build Debug APK
+          echo "Verifying Manifest BLE/Hardware declarations..."
+          grep "android.hardware.bluetooth_le" app/src/main/AndroidManifest.xml || true
+          grep "BLUETOOTH_CONNECT" app/src/main/AndroidManifest.xml || true
+
+      - name: Build Debug APK (Hardware Testing)
         if: ${{ github.event.inputs.build_type == 'debug' || github.event.inputs.build_type == 'both' || github.event_name == 'push' || github.event_name == 'pull_request' }}
-        run: ./gradlew :app:assembleDebug --stacktrace
+        run: |
+          echo "Building AccessOS Debug APK..."
+          ./gradlew assembleDebug --stacktrace --no-daemon --console=plain
 
       - name: Build Release APK
         if: ${{ github.event.inputs.build_type == 'release' || github.event.inputs.build_type == 'both' }}
@@ -105,14 +111,24 @@ jobs:
           STORE_PASSWORD: ${{ secrets.STORE_PASSWORD }}
           KEY_PASSWORD: ${{ secrets.KEY_PASSWORD }}
         run: |
+          echo "Building AccessOS Release APK..."
           if [ -z "$STORE_PASSWORD" ] || [ ! -f "${KEYSTORE_PATH:-my-upload-key.jks}" ]; then
             echo "Release keystore secrets not detected. Generating installable APK using debug keystore..."
-            ./gradlew :app:assembleDebug --stacktrace
+            ./gradlew assembleDebug --stacktrace --no-daemon --console=plain
           else
-            ./gradlew :app:assembleRelease --stacktrace
+            ./gradlew assembleRelease --stacktrace --no-daemon --console=plain
           fi
 
-      - name: Verify Artifacts
+      - name: Inspect built APK outputs
+        if: always()
+        run: |
+          echo "=== DIAGNOSTICS: build outputs ==="
+          ls -la app || true
+          ls -la app/build || true
+          find app/build -type f -name '*.apk' -print || true
+          find app/build -type f -name '*.apk' -exec ls -lh {} \; || true
+
+      - name: Verify Hardware & BLE Integration Artifacts
         run: |
           echo "Checking generated APK outputs..."
           ls -la app/build/outputs/apk/debug/ || true
@@ -125,7 +141,7 @@ jobs:
         if: always()
         with:
           name: AccessOS-Hardware-Debug-APK
-          path: app/build/outputs/apk/debug/*.apk
+          path: app/build/outputs/**/*.apk
           if-no-files-found: warn
           retention-days: 14
 
