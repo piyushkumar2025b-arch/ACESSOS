@@ -1,3 +1,7 @@
+# Robust Android APK build workflow that avoids the deprecated 'tools' package.
+# This does NOT use android-actions/setup-android@v3 (which in some versions attempts to install 'tools').
+# Instead it installs command-line tools explicitly, accepts licenses non-interactively,
+# installs required SDK components, builds, prints diagnostics, and uploads APK artifacts.
 name: Build & Release AccessOS Android APK
 
 on:
@@ -31,41 +35,104 @@ jobs:
     permissions:
       contents: write
 
+    env:
+      ANDROID_SDK_ROOT: ${{ runner.temp }}/android-sdk   # isolated SDK path for this job
+      PATH: ${{ runner.temp }}/android-sdk/cmdline-tools/latest/bin:${ { runner.temp }}/android-sdk/platform-tools:${PATH}
+
     steps:
-      - name: Checkout Repository
+      - name: Checkout repository
         uses: actions/checkout@v4
         with:
           fetch-depth: 0
 
-      - name: Set up Java JDK 21 (Temurin)
+      - name: Set up Java (Temurin 21)
         uses: actions/setup-java@v4
         with:
           distribution: 'temurin'
           java-version: '21'
           cache: 'gradle'
 
-      - name: Set up Android SDK
-        uses: android-actions/setup-android@v3
-
-      - name: Install Android SDK packages
+      - name: Install Android command-line tools and SDK components (no 'tools' package)
         shell: bash
         run: |
           set -eux
-          echo "ANDROID_SDK_ROOT=$ANDROID_SDK_ROOT"
-          ls -la "$ANDROID_SDK_ROOT" || true
 
-          yes | "$ANDROID_SDK_ROOT/cmdline-tools/latest/bin/sdkmanager" --licenses
-          yes | "$ANDROID_SDK_ROOT/cmdline-tools/latest/bin/sdkmanager" \
+          # Prepare SDK root
+          mkdir -p "$ANDROID_SDK_ROOT"
+          cd "$RUNNER_TEMP"
+
+          # If sdkmanager already exists in expected path, reuse it; otherwise download command-line tools.
+          if [ -x "${ANDROID_SDK_ROOT}/cmdline-tools/latest/bin/sdkmanager" ]; then
+            echo "sdkmanager already available"
+          else
+            echo "Downloading Android command-line tools..."
+            # Try a stable 'latest' endpoint; fallback if one fails. We avoid hardcoding a particular minor version.
+            CLI_ZIP="commandlinetools-linux-latest.zip"
+            CURL_URLS=(
+              "https://dl.google.com/android/repository/commandlinetools-linux-latest.zip"
+              "https://dl.google.com/android/repository/commandlinetools-linux-9477386_latest.zip"
+            )
+
+            downloaded=false
+            for url in "${CURL_URLS[@]}"; do
+              if curl --fail -fsS -o "$CLI_ZIP" "$url"; then
+                downloaded=true
+                break
+              fi
+            done
+
+            if [ "$downloaded" != "true" ]; then
+              echo "Failed to download Android command-line tools from known URLs. Attempting to use preinstalled SDK at /usr/local/lib/android/sdk..."
+              if [ -x "/usr/local/lib/android/sdk/cmdline-tools/latest/bin/sdkmanager" ]; then
+                mkdir -p "$ANDROID_SDK_ROOT/cmdline-tools"
+                cp -a /usr/local/lib/android/sdk/cmdline-tools/latest "$ANDROID_SDK_ROOT/cmdline-tools/"
+              else
+                echo "No usable sdkmanager found. Exiting."
+                exit 1
+              fi
+            else
+              unzip -q "$CLI_ZIP" -d cmdline_tmp
+              # The zip usually contains a top-level folder named 'cmdline-tools'
+              mkdir -p "$ANDROID_SDK_ROOT/cmdline-tools"
+              # Move the extracted cmdline-tools into 'latest' so sdkmanager path is consistent
+              if [ -d cmdline_tmp/cmdline-tools ]; then
+                mv cmdline_tmp/cmdline-tools "$ANDROID_SDK_ROOT/cmdline-tools/latest"
+              else
+                # Some zips might have a nested folder; move whatever was extracted
+                mv cmdline_tmp/* "$ANDROID_SDK_ROOT/cmdline-tools/latest"
+              fi
+            fi
+          fi
+
+          # Ensure platform-tools directory exists in PATH for adb/fastboot if needed
+          mkdir -p "$ANDROID_SDK_ROOT/platform-tools"
+
+          # Export paths for immediate use in this step
+          export PATH="$ANDROID_SDK_ROOT/cmdline-tools/latest/bin:$ANDROID_SDK_ROOT/platform-tools:$PATH"
+
+          echo "Using sdkmanager at: $(command -v sdkmanager || true) || $ANDROID_SDK_ROOT/cmdline-tools/latest/bin/sdkmanager"
+
+          # Accept licenses non-interactively and install required packages.
+          # IMPORTANT: we do NOT install the deprecated 'tools' package.
+          yes | sdkmanager --sdk_root="$ANDROID_SDK_ROOT" --licenses || true
+
+          # Install modern components required for typical Android builds.
+          # Adjust API/build-tools versions to match your project's requirements if different.
+          yes | sdkmanager --sdk_root="$ANDROID_SDK_ROOT" \
             "platform-tools" \
             "platforms;android-33" \
             "build-tools;33.0.2" \
             "cmdline-tools;latest"
 
-      - name: Make Gradle Wrapper Executable
+          # Confirm installed
+          sdkmanager --sdk_root="$ANDROID_SDK_ROOT" --list || true
+
+      - name: Make Gradle wrapper executable
         run: chmod +x ./gradlew
 
       - name: Prepare Hardware & App Environment Configuration
         run: |
+          set -eux
           echo "Preparing environment files..."
           if [ ! -f .env ]; then
             if [ -f .env.example ]; then
@@ -100,7 +167,13 @@ jobs:
 
       - name: Build Debug APK (Hardware Testing)
         if: ${{ github.event.inputs.build_type == 'debug' || github.event.inputs.build_type == 'both' || github.event_name == 'push' || github.event_name == 'pull_request' }}
+        env:
+          ANDROID_SDK_ROOT: ${{ env.ANDROID_SDK_ROOT }}
+          PATH: ${{ env.ANDROID_SDK_ROOT }}/cmdline-tools/latest/bin:${{ env.ANDROID_SDK_ROOT }}/platform-tools:${{ env.PATH }}
         run: |
+          set -eux
+          echo "Gradle version:"
+          ./gradlew --version
           echo "Building AccessOS Debug APK..."
           ./gradlew assembleDebug --stacktrace --no-daemon --console=plain
 
@@ -110,30 +183,31 @@ jobs:
           KEYSTORE_PATH: ${{ secrets.KEYSTORE_PATH }}
           STORE_PASSWORD: ${{ secrets.STORE_PASSWORD }}
           KEY_PASSWORD: ${{ secrets.KEY_PASSWORD }}
+          ANDROID_SDK_ROOT: ${{ env.ANDROID_SDK_ROOT }}
+          PATH: ${{ env.ANDROID_SDK_ROOT }}/cmdline-tools/latest/bin:${{ env.ANDROID_SDK_ROOT }}/platform-tools:${{ env.PATH }}
         run: |
+          set -eux
           echo "Building AccessOS Release APK..."
           if [ -z "$STORE_PASSWORD" ] || [ ! -f "${KEYSTORE_PATH:-my-upload-key.jks}" ]; then
-            echo "Release keystore secrets not detected. Generating installable APK using debug keystore..."
+            echo "Release keystore secrets not detected. Creating installable debug-signed APK..."
             ./gradlew assembleDebug --stacktrace --no-daemon --console=plain
           else
             ./gradlew assembleRelease --stacktrace --no-daemon --console=plain
           fi
 
-      - name: Inspect built APK outputs
+      - name: Inspect build outputs (diagnostics)
         if: always()
         run: |
-          echo "=== DIAGNOSTICS: build outputs ==="
-          ls -la app || true
-          ls -la app/build || true
-          find app/build -type f -name '*.apk' -print || true
-          find app/build -type f -name '*.apk' -exec ls -lh {} \; || true
-
-      - name: Verify Hardware & BLE Integration Artifacts
-        run: |
-          echo "Checking generated APK outputs..."
-          ls -la app/build/outputs/apk/debug/ || true
-          if [ -d "app/build/outputs/apk/release" ]; then
-            ls -la app/build/outputs/apk/release/ || true
+          set -eux
+          echo "=== DIAGNOSTICS: tree of app/build ==="
+          if [ -d app ]; then
+            ls -la app || true
+            ls -la app/build || true
+            find app/build -type f -name '*.apk' -print || true
+            find app/build -type f -name '*.apk' -exec ls -lh {} \; || true
+          else
+            echo "No 'app' module directory found in repo root."
+            ls -la || true
           fi
 
       - name: Upload Debug APK Artifact
