@@ -44,14 +44,12 @@ jobs:
           java-version: '21'
           cache: 'gradle'
 
-      - name: Persist Android SDK paths (use runner-provided RUNNER_TEMP)
+      - name: Persist Android SDK paths
         run: |
-          # Set ANDROID_SDK_ROOT inside GITHUB_ENV so it persists across steps.
           echo "ANDROID_SDK_ROOT=$RUNNER_TEMP/android-sdk" >> $GITHUB_ENV
-          # Prepend cmdline-tools/latest/bin and platform-tools to PATH for later steps.
           echo "PATH=$RUNNER_TEMP/android-sdk/cmdline-tools/latest/bin:$RUNNER_TEMP/android-sdk/platform-tools:$PATH" >> $GITHUB_ENV
 
-      - name: Install Android command-line tools and SDK components (no 'tools' package)
+      - name: Install Android command-line tools and SDK components
         shell: bash
         env:
           ANDROID_SDK_ROOT: ${{ env.ANDROID_SDK_ROOT }}
@@ -61,7 +59,6 @@ jobs:
           mkdir -p "$ANDROID_SDK_ROOT"
           cd "$RUNNER_TEMP"
 
-          # If sdkmanager already exists in expected path, reuse it; otherwise download command-line tools.
           if [ -x "${ANDROID_SDK_ROOT}/cmdline-tools/latest/bin/sdkmanager" ]; then
             echo "sdkmanager already available"
           else
@@ -81,12 +78,12 @@ jobs:
             done
 
             if [ "$downloaded" != "true" ]; then
-              echo "Failed to download Android command-line tools. Attempting to use preinstalled SDK at /usr/local/lib/android/sdk..."
+              echo "Failed to download Android command-line tools. Attempting preinstalled SDK path..."
               if [ -x "/usr/local/lib/android/sdk/cmdline-tools/latest/bin/sdkmanager" ]; then
                 mkdir -p "$ANDROID_SDK_ROOT/cmdline-tools"
                 cp -a /usr/local/lib/android/sdk/cmdline-tools/latest "$ANDROID_SDK_ROOT/cmdline-tools/"
               else
-                echo "No usable sdkmanager found. Exiting."
+                echo "No usable sdkmanager found."
                 exit 1
               fi
             else
@@ -100,22 +97,34 @@ jobs:
             fi
           fi
 
-          # Ensure platform-tools directory exists
           mkdir -p "$ANDROID_SDK_ROOT/platform-tools"
-
-          # Update PATH for this step
           export PATH="$ANDROID_SDK_ROOT/cmdline-tools/latest/bin:$ANDROID_SDK_ROOT/platform-tools:$PATH"
 
           echo "Using sdkmanager at: $(command -v sdkmanager || true)"
 
-          # Accept licenses and install required packages (do NOT install deprecated 'tools')
-          yes | sdkmanager --sdk_root="$ANDROID_SDK_ROOT" --licenses || true
+          echo "Accepting SDK licenses..."
+          yes 2>/dev/null | sdkmanager --sdk_root="$ANDROID_SDK_ROOT" --licenses || true
 
-          yes | sdkmanager --sdk_root="$ANDROID_SDK_ROOT" \
-            "platform-tools" \
-            "platforms;android-33" \
-            "build-tools;33.0.2" \
-            "cmdline-tools;latest"
+          install_with_retries() {
+            pkgs=("$@")
+            attempts=3
+            for i in $(seq 1 $attempts); do
+              echo "Installing ${pkgs[*]} (attempt $i/$attempts)..."
+              if yes 2>/dev/null | sdkmanager --sdk_root="$ANDROID_SDK_ROOT" "${pkgs[@]}"; then
+                echo "Installed ${pkgs[*]}"
+                return 0
+              fi
+              echo "sdkmanager install attempt $i failed; retrying in $((i*5))s..."
+              sleep $((i*5))
+            done
+            return 1
+          }
+
+          if ! install_with_retries "platform-tools" "platforms;android-33" "build-tools;33.0.2" "cmdline-tools;latest"; then
+            echo "Final sdkmanager install failed. Dumping sdkmanager --list for debugging:"
+            sdkmanager --sdk_root="$ANDROID_SDK_ROOT" --list || true
+            exit 1
+          fi
 
           sdkmanager --sdk_root="$ANDROID_SDK_ROOT" --list || true
 
