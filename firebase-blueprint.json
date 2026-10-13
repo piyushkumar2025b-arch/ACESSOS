@@ -1,0 +1,163 @@
+{
+  "entities": {
+    "FamilyGroup": {
+      "title": "FamilyGroup",
+      "description": "Family coordination and care circle hub.",
+      "type": "object",
+      "properties": {
+        "familyId": { "type": "string" },
+        "groupName": { "type": "string" },
+        "inviteCode": { "type": "string" },
+        "primaryElderName": { "type": "string" },
+        "isLinked": { "type": "boolean" },
+        "lastSyncedTimestamp": { "type": "integer" },
+        "totalMembersCount": { "type": "integer" }
+      },
+      "required": ["familyId", "groupName"]
+    },
+    "FamilyMember": {
+      "title": "FamilyMember",
+      "description": "Care circle family member or emergency contact.",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string" },
+        "name": { "type": "string" },
+        "relationship": { "type": "string" },
+        "phoneNumber": { "type": "string" },
+        "isPrimaryEmergencyContact": { "type": "boolean" },
+        "avatarInitials": { "type": "string" },
+        "avatarColorHex": { "type": "integer" }
+      },
+      "required": ["id", "name", "phoneNumber"]
+    },
+    "Medicine": {
+      "title": "Medicine",
+      "description": "Prescribed medication reminder item.",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string" },
+        "familyId": { "type": "string" },
+        "name": { "type": "string" },
+        "time": { "type": "string" },
+        "dosage": { "type": "string" },
+        "instructions": { "type": "string" },
+        "pillIconType": { "type": "string" },
+        "isTakenToday": { "type": "boolean" },
+        "lastTakenTimestamp": { "type": "integer" }
+      },
+      "required": ["id", "familyId", "name", "time", "dosage"]
+    },
+    "MedicineLog": {
+      "title": "MedicineLog",
+      "description": "Log entry recording when a medicine was taken or missed.",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string" },
+        "medicineId": { "type": "string" },
+        "medicineName": { "type": "string" },
+        "dosage": { "type": "string" },
+        "timestamp": { "type": "integer" },
+        "status": { "type": "string" },
+        "loggedBy": { "type": "string" }
+      },
+      "required": ["id", "medicineId", "medicineName", "timestamp", "status"]
+    },
+    "SosAlert": {
+      "title": "SosAlert",
+      "description": "Emergency SOS broadcast alert event.",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string" },
+        "familyId": { "type": "string" },
+        "elderName": { "type": "string" },
+        "timestamp": { "type": "integer" },
+        "latitude": { "type": "number" },
+        "longitude": { "type": "number" },
+        "status": { "type": "string" },
+        "resolvedAt": { "type": "integer" },
+        "triggerMethod": { "type": "string" },
+        "address": { "type": "string" },
+        "notes": { "type": "string" },
+        "priorityLevel": { "type": "string" },
+        "alertType": { "type": "string" },
+        "targetContactsCount": { "type": "integer" },
+        "broadcastMessage": { "type": "string" },
+        "deliveryTimestamp": { "type": "integer" }
+      },
+      "required": ["id", "familyId", "elderName", "timestamp", "status"]
+    },
+    "FcmToken": {
+      "title": "FcmToken",
+      "description": "Device registration token for push notifications.",
+      "type": "object",
+      "properties": {
+        "token": { "type": "string" },
+        "deviceName": { "type": "string" },
+        "platform": { "type": "string" },
+        "updatedAt": { "type": "integer" }
+      },
+      "required": ["token"]
+    },
+    "FamilyLocation": {
+      "title": "FamilyLocation",
+      "description": "Live GPS coordinates broadcast for family safety.",
+      "type": "object",
+      "properties": {
+        "latitude": { "type": "number" },
+        "longitude": { "type": "number" },
+        "accuracyMeters": { "type": "number" },
+        "timestamp": { "type": "integer" },
+        "provider": { "type": "string" },
+        "isMock": { "type": "boolean" },
+        "updatedAt": { "type": "integer" }
+      },
+      "required": ["latitude", "longitude", "timestamp"]
+    },
+    "PendingNotification": {
+      "title": "PendingNotification",
+      "description": "Pending notification event for family members.",
+      "type": "object",
+      "properties": {
+        "title": { "type": "string" },
+        "body": { "type": "string" },
+        "type": { "type": "string" },
+        "timestamp": { "type": "integer" }
+      },
+      "required": ["title", "body"]
+    }
+  },
+  "firestore": {
+    "/families/{familyId}": {
+      "schema": "FamilyGroup",
+      "description": "Family coordination and care circle hub."
+    },
+    "/families/{familyId}/members/{memberId}": {
+      "schema": "FamilyMember",
+      "description": "Care circle family members and emergency contacts."
+    },
+    "/families/{familyId}/medicines/{medicineId}": {
+      "schema": "Medicine",
+      "description": "Prescribed medicine reminders."
+    },
+    "/families/{familyId}/medicine_logs/{logId}": {
+      "schema": "MedicineLog",
+      "description": "Medicine compliance logs."
+    },
+    "/families/{familyId}/sos_events/{sosId}": {
+      "schema": "SosAlert",
+      "description": "Emergency SOS broadcast alerts."
+    },
+    "/families/{familyId}/fcm_tokens/{tokenId}": {
+      "schema": "FcmToken",
+      "description": "Device FCM tokens for alerts."
+    },
+    "/families/{familyId}/locations/{locationId}": {
+      "schema": "FamilyLocation",
+      "description": "Family member location history and telemetry."
+    },
+    "/families/{familyId}/pending_notifications/{notificationId}": {
+      "schema": "PendingNotification",
+      "description": "Pending notifications queue."
+    }
+  }
+}

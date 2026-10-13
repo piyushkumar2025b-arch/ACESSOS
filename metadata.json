@@ -1,0 +1,8 @@
+{
+  "name": "AccessOS",
+  "description": "A simplified computing environment for elderly and non-technical users with high-contrast UI, large touch controls, medication reminders, password manager, and emergency alerts.",
+  "requestFramePermissions": [],
+  "majorCapabilities": [
+    "MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"
+  ]
+}

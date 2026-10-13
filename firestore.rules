@@ -1,0 +1,105 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+
+    function isAuthenticated() {
+      return request.auth != null;
+    }
+
+    function isValidFamilyGroup(data) {
+      return data.familyId is string &&
+             data.groupName is string &&
+             data.groupName.size() > 0 &&
+             data.groupName.size() <= 100;
+    }
+
+    function isValidFamilyMember(data) {
+      return data.id is string &&
+             data.name is string &&
+             data.name.size() > 0 &&
+             data.phoneNumber is string &&
+             data.phoneNumber.size() > 0;
+    }
+
+    function isValidMedicine(data) {
+      return data.id is string &&
+             data.name is string &&
+             data.name.size() > 0 &&
+             data.time is string &&
+             data.dosage is string;
+    }
+
+    function isValidMedicineLog(data) {
+      return data.id is string &&
+             data.medicineId is string &&
+             data.medicineName is string &&
+             data.status is string;
+    }
+
+    function isValidSosAlert(data) {
+      return data.id is string &&
+             data.elderName is string &&
+             data.status is string;
+    }
+
+    function isValidFcmToken(data) {
+      return data.token is string && data.token.size() > 0;
+    }
+
+    function isValidLocation(data) {
+      return data.latitude is number && data.longitude is number;
+    }
+
+    function isValidNotification(data) {
+      return data.title is string && data.body is string;
+    }
+
+    match /families/{familyId} {
+      allow read: if isAuthenticated();
+      allow create, update: if isAuthenticated() && isValidFamilyGroup(request.resource.data);
+      allow delete: if isAuthenticated();
+
+      match /members/{memberId} {
+        allow read: if isAuthenticated();
+        allow create, update: if isAuthenticated() && isValidFamilyMember(request.resource.data);
+        allow delete: if isAuthenticated();
+      }
+
+      match /medicines/{medicineId} {
+        allow read: if isAuthenticated();
+        allow create, update: if isAuthenticated() && isValidMedicine(request.resource.data);
+        allow delete: if isAuthenticated();
+      }
+
+      match /medicine_logs/{logId} {
+        allow read: if isAuthenticated();
+        allow create, update: if isAuthenticated() && isValidMedicineLog(request.resource.data);
+        allow delete: if isAuthenticated();
+      }
+
+      match /sos_events/{sosId} {
+        allow read: if isAuthenticated();
+        allow create, update: if isAuthenticated() && isValidSosAlert(request.resource.data);
+        allow delete: if isAuthenticated();
+      }
+
+      match /fcm_tokens/{tokenId} {
+        allow read: if isAuthenticated();
+        allow create, update: if isAuthenticated() && isValidFcmToken(request.resource.data);
+        allow delete: if isAuthenticated();
+      }
+
+      match /locations/{locationId} {
+        allow read: if isAuthenticated();
+        allow create, update: if isAuthenticated() && isValidLocation(request.resource.data);
+        allow delete: if isAuthenticated();
+      }
+
+      match /pending_notifications/{notificationId} {
+        allow read: if isAuthenticated();
+        allow create, update: if isAuthenticated() && isValidNotification(request.resource.data);
+        allow delete: if isAuthenticated();
+      }
+    }
+  }
+}
