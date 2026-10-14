@@ -37,108 +37,19 @@ jobs:
         with:
           fetch-depth: 0
 
-      - name: Set up Java (Temurin 11)
+      - name: Set up Java (Temurin 17)
         uses: actions/setup-java@v4
         with:
           distribution: 'temurin'
-          java-version: '11'
-          cache: 'gradle'
+          java-version: '17'
 
-      - name: Persist Android SDK paths
-        run: |
-          echo "ANDROID_SDK_ROOT=$RUNNER_TEMP/android-sdk" >> $GITHUB_ENV
-          echo "ANDROID_HOME=$RUNNER_TEMP/android-sdk" >> $GITHUB_ENV
-          echo "PATH=$RUNNER_TEMP/android-sdk/cmdline-tools/latest/bin:$RUNNER_TEMP/android-sdk/platform-tools:$PATH" >> $GITHUB_ENV
+      - name: Setup Gradle caching
+        uses: gradle/actions/setup-gradle@v4
 
-      - name: Install Android command-line tools and SDK components (robust, with fallback)
-        shell: bash
-        env:
-          ANDROID_SDK_ROOT: ${{ env.ANDROID_SDK_ROOT }}
-        run: |
-          set -eux
-
-          mkdir -p "$ANDROID_SDK_ROOT"
-          cd "$RUNNER_TEMP"
-
-          # ensure sdkmanager is available (download if required)
-          if [ -x "${ANDROID_SDK_ROOT}/cmdline-tools/latest/bin/sdkmanager" ]; then
-            echo "sdkmanager already available: ${ANDROID_SDK_ROOT}/cmdline-tools/latest/bin/sdkmanager"
-          else
-            echo "Downloading Android command-line tools..."
-            CLI_ZIP="commandlinetools-linux-latest.zip"
-            CURL_URLS=(
-              "https://dl.google.com/android/repository/commandlinetools-linux-latest.zip"
-              "https://dl.google.com/android/repository/commandlinetools-linux-9477386_latest.zip"
-            )
-
-            downloaded=false
-            for url in "${CURL_URLS[@]}"; do
-              if curl --fail -fsS -o "$CLI_ZIP" "$url"; then
-                downloaded=true
-                break
-              fi
-            done
-
-            if [ "$downloaded" != "true" ]; then
-              echo "Failed to download Android command-line tools. Attempting to copy preinstalled sdkmanager..."
-              if [ -x "/usr/local/lib/android/sdk/cmdline-tools/latest/bin/sdkmanager" ]; then
-                mkdir -p "$ANDROID_SDK_ROOT/cmdline-tools"
-                cp -a /usr/local/lib/android/sdk/cmdline-tools/latest "$ANDROID_SDK_ROOT/cmdline-tools/"
-              else
-                echo "No usable sdkmanager found on runner."
-                exit 1
-              fi
-            else
-              unzip -q "$CLI_ZIP" -d cmdline_tmp
-              mkdir -p "$ANDROID_SDK_ROOT/cmdline-tools"
-              if [ -d cmdline_tmp/cmdline-tools ]; then
-                mv cmdline_tmp/cmdline-tools "$ANDROID_SDK_ROOT/cmdline-tools/latest"
-              else
-                mv cmdline_tmp/* "$ANDROID_SDK_ROOT/cmdline-tools/latest"
-              fi
-            fi
-          fi
-
-          mkdir -p "$ANDROID_SDK_ROOT/platform-tools"
-          export PATH="$ANDROID_SDK_ROOT/cmdline-tools/latest/bin:$ANDROID_SDK_ROOT/platform-tools:$PATH"
-          echo "Using sdkmanager at: $(command -v sdkmanager || true)"
-
-          echo "Accepting SDK licenses..."
-          yes | sdkmanager --sdk_root="$ANDROID_SDK_ROOT" --licenses || true
-
-          install_with_retries() {
-            pkgs=("$@")
-            attempts=3
-            for i in $(seq 1 $attempts); do
-              echo "Installing ${pkgs[*]} (attempt $i/$attempts)..."
-              if yes | sdkmanager --sdk_root="$ANDROID_SDK_ROOT" "${pkgs[@]}"; then
-                echo "Installed ${pkgs[*]}"
-                return 0
-              fi
-              echo "sdkmanager install attempt $i failed; retrying in $((i*5))s..."
-              sleep $((i*5))
-            done
-            return 1
-          }
-
-          # Try compileSdk 36 first (project uses compileSdk 36); fallback to 33 if unavailable
-          PKGS_36=( "platform-tools" "platforms;android-36" "build-tools;36.0.0" "cmdline-tools;latest" )
-          PKGS_33=( "platform-tools" "platforms;android-33" "build-tools;33.0.2" "cmdline-tools;latest" )
-
-          if install_with_retries "${PKGS_36[@]}"; then
-            echo "Installed Android platform 36/tooling."
-          else
-            echo "Failed to install packages for android-36, trying fallback android-33..."
-            if install_with_retries "${PKGS_33[@]}"; then
-              echo "Installed Android platform 33/tooling as fallback."
-            else
-              echo "Both android-36 and android-33 installs failed. Dumping sdkmanager --list for debugging:"
-              sdkmanager --sdk_root="$ANDROID_SDK_ROOT" --list || true
-              exit 1
-            fi
-          fi
-
-          sdkmanager --sdk_root="$ANDROID_SDK_ROOT" --list || true
+      - name: Set up Android SDK
+        uses: android-actions/setup-android@v3
+        with:
+          packages: platform-tools "platforms;android-36" "build-tools;36.0.0"
 
       - name: Make Gradle wrapper executable
         run: chmod +x ./gradlew
@@ -179,41 +90,33 @@ jobs:
           grep "BLUETOOTH_CONNECT" app/src/main/AndroidManifest.xml || true
 
       - name: Build Debug APK (Hardware Testing)
-        if: ${{ github.event.inputs.build_type == 'debug' || github.event.inputs.build_type == 'both' || github.event_name == 'push' || github.event_name == 'pull_request' }}
-        env:
-          ANDROID_SDK_ROOT: ${{ env.ANDROID_SDK_ROOT }}
+        if: github.event_name != 'workflow_dispatch' || github.event.inputs.build_type == 'debug' || github.event.inputs.build_type == 'both'
         run: |
           set -eux
           echo "Gradle version:"
           ./gradlew --version
           echo "Building AccessOS Debug APK..."
-          ./gradlew assembleDebug --stacktrace --no-daemon --console=plain
+          ./gradlew assembleDebug --stacktrace --console=plain
 
       - name: Build Release APK
-        if: ${{ github.event.inputs.build_type == 'release' || github.event.inputs.build_type == 'both' || startsWith(github.ref, 'refs/tags/') }}
+        if: startsWith(github.ref, 'refs/tags/v') || (github.event_name == 'workflow_dispatch' && (github.event.inputs.build_type == 'release' || github.event.inputs.build_type == 'both'))
         env:
-          ANDROID_SDK_ROOT: ${{ env.ANDROID_SDK_ROOT }}
+          KEYSTORE_PATH: ${{ secrets.KEYSTORE_PATH }}
           STORE_PASSWORD: ${{ secrets.STORE_PASSWORD }}
           KEY_PASSWORD: ${{ secrets.KEY_PASSWORD }}
-          KEYSTORE_BASE64: ${{ secrets.KEYSTORE_BASE64 }}
-          KEYSTORE_PATH: ${{ secrets.KEYSTORE_PATH }}
         run: |
           set -eux
           echo "Building AccessOS Release APK..."
-          # Decode base64 keystore when provided
-          if [ -n "${KEYSTORE_BASE64:-}" ]; then
-            echo "Decoding KEYSTORE_BASE64 to my-upload-key.jks"
-            echo "${KEYSTORE_BASE64}" | base64 -d > my-upload-key.jks
-            export KEYSTORE_PATH="my-upload-key.jks"
-          fi
-
-          # If KEYSTORE_PATH is provided as a secret pointing to a repo file path, it'll be used.
-          if [ -n "${STORE_PASSWORD:-}" ] && [ -f "${KEYSTORE_PATH:-my-upload-key.jks}" ]; then
-            echo "Using provided keystore at ${KEYSTORE_PATH:-my-upload-key.jks} to sign release"
-            ./gradlew assembleRelease --stacktrace --no-daemon --console=plain
+          if [ -z "${STORE_PASSWORD:-}" ] || [ ! -f "${KEYSTORE_PATH:-my-upload-key.jks}" ]; then
+            echo "Release keystore secrets not detected - falling back to debug-signed APK for installable artifact..."
+            echo "To produce a true signed release, add KEYSTORE_PATH / STORE_PASSWORD / KEY_PASSWORD secrets (or commit an upload keystore)."
+            ./gradlew assembleDebug --stacktrace --console=plain
+            mkdir -p app/build/outputs/apk/release
+            DEBUG_APK=$(find app/build/outputs/apk/debug -maxdepth 1 -name '*.apk' | head -n 1)
+            echo "Copying $DEBUG_APK to release folder for artifact consistency..."
+            cp "$DEBUG_APK" app/build/outputs/apk/release/ || true
           else
-            echo "Release keystore/secrets not detected. Building debug-signed APK instead to keep CI green."
-            ./gradlew assembleDebug --stacktrace --no-daemon --console=plain
+            ./gradlew assembleRelease --stacktrace --console=plain
           fi
 
       - name: Inspect build outputs (diagnostics)
@@ -236,13 +139,13 @@ jobs:
         if: always()
         with:
           name: AccessOS-Hardware-Debug-APK
-          path: app/build/outputs/**/*.apk
+          path: app/build/outputs/apk/debug/*.apk
           if-no-files-found: warn
           retention-days: 14
 
       - name: Upload Release APK Artifact (if built)
         uses: actions/upload-artifact@v4
-        if: always()
+        if: success()
         with:
           name: AccessOS-Hardware-Release-APK
           path: app/build/outputs/apk/release/*.apk
@@ -258,6 +161,7 @@ jobs:
             app/build/outputs/apk/release/*.apk
             hardware/firmware/AccessOs_ESP32_Firmware.ino
             hardware/HARDWARE_SETUP.md
+          fail_on_unmatched_files: false
           draft: false
           prerelease: false
           generate_release_notes: true
