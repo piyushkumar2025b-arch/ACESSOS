@@ -101,6 +101,9 @@ fun MedicineScreen(
     val coroutineScope = rememberCoroutineScope()
 
     val medicines by medicineUseCases.getMedicines().collectAsState(initial = emptyList())
+
+    val takenCount = medicines.count { it.isTakenToday }
+    val totalCount = medicines.size
     val logs by medicineUseCases.getMedicineLogs().collectAsState(initial = emptyList())
 
     var selectedTabIndex by remember { mutableIntStateOf(0) }
@@ -108,9 +111,6 @@ fun MedicineScreen(
     var selectedAiMedicine by remember { mutableStateOf<Medicine?>(null) }
     var aiExplanationText by remember { mutableStateOf<String?>(null) }
     var isAiLoading by remember { mutableStateOf(false) }
-
-    val takenCount = medicines.count { it.isTakenToday }
-    val totalCount = medicines.size
 
     // AI Medicine Guide Dialog
     if (selectedAiMedicine != null) {
@@ -200,7 +200,14 @@ fun MedicineScreen(
     Column(
         modifier = modifier
             .fillMaxSize()
-            .background(AccessBackground)
+            .background(
+                androidx.compose.ui.graphics.Brush.verticalGradient(
+                    listOf(
+                        com.example.ui.theme.AccessBackgroundDeep,
+                        AccessBackground
+                    )
+                )
+            )
     ) {
         // App Top Bar
         AccessTopBar(
@@ -208,77 +215,55 @@ fun MedicineScreen(
             onLogoutClick = onBackToHome
         )
 
-        // Navigation Bar
-        Surface(
-            modifier = Modifier.fillMaxWidth(),
-            color = AccessSurfaceVariant,
-            border = BorderStroke(1.dp, AccessSurfaceBorder)
-        ) {
-            Row(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .padding(horizontal = 16.dp, vertical = 10.dp),
-                verticalAlignment = Alignment.CenterVertically,
-                horizontalArrangement = Arrangement.SpaceBetween
-            ) {
-                // Back Button
-                Button(
-                    onClick = {
-                        VibrationHelper.vibrateShort(context)
-                        onBackToHome()
-                    },
-                    colors = ButtonDefaults.buttonColors(containerColor = AccessPrimary),
-                    shape = RoundedCornerShape(14.dp),
-                    modifier = Modifier.testTag("medicine_back_button")
-                ) {
-                    Icon(
-                        imageVector = Icons.AutoMirrored.Filled.ArrowBack,
-                        contentDescription = "Back",
-                        tint = TextPrimary,
-                        modifier = Modifier.size(24.dp)
-                    )
-                    Spacer(modifier = Modifier.width(8.dp))
-                    Text(
-                        text = "HOME",
-                        fontSize = 18.sp,
-                        fontWeight = FontWeight.Bold,
-                        color = TextPrimary
-                    )
-                }
-
-                // Add Prescription Button
-                Button(
+        // Professional screen header
+        com.example.ui.common.ScreenHeader(
+            title = "Medicine",
+            subtitle = "$takenCount of $totalCount doses taken today",
+            icon = Icons.Default.Medication,
+            accent = com.example.ui.theme.AccessSuccess,
+            onBack = {
+                VibrationHelper.vibrateShort(context)
+                onBackToHome()
+            },
+            action = {
+                androidx.compose.material3.Button(
                     onClick = {
                         VibrationHelper.vibrateShort(context)
                         showAddDialog = true
                     },
-                    colors = ButtonDefaults.buttonColors(containerColor = AccessSecondary),
+                    colors = androidx.compose.material3.ButtonDefaults.buttonColors(
+                        containerColor = AccessSecondary
+                    ),
                     shape = RoundedCornerShape(14.dp),
-                    modifier = Modifier.testTag("add_medicine_button")
+                    modifier = Modifier.testTag("add_medicine_button"),
+                    contentPadding = androidx.compose.foundation.layout.PaddingValues(
+                        horizontal = 14.dp, vertical = 10.dp
+                    )
                 ) {
                     Icon(
                         imageVector = Icons.Default.Add,
                         contentDescription = "Add Dose",
                         tint = AccessBackground,
-                        modifier = Modifier.size(24.dp)
+                        modifier = Modifier.size(20.dp)
                     )
                     Spacer(modifier = Modifier.width(6.dp))
                     Text(
-                        text = "NEW MEDICINE",
-                        fontSize = 18.sp,
+                        text = "ADD",
+                        fontSize = 15.sp,
                         fontWeight = FontWeight.Bold,
                         color = AccessBackground
                     )
                 }
-            }
-        }
+            },
+            modifier = Modifier.padding(horizontal = 20.dp, vertical = 14.dp)
+        )
 
         // Today's Progress Banner
         Surface(
             modifier = Modifier
                 .fillMaxWidth()
-                .padding(horizontal = 16.dp, vertical = 10.dp),
-            shape = RoundedCornerShape(18.dp),
+                .padding(horizontal = 20.dp),
+            shape = RoundedCornerShape(22.dp),
             color = if (takenCount == totalCount && totalCount > 0) AccessSuccessContainer else AccessSurface,
             border = BorderStroke(2.dp, if (takenCount == totalCount && totalCount > 0) AccessSuccess else AccessSurfaceBorder)
         ) {

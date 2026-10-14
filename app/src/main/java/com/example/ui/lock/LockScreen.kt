@@ -110,7 +110,14 @@ fun LockScreen(
     Column(
         modifier = modifier
             .fillMaxSize()
-            .background(AccessBackground)
+            .background(
+                androidx.compose.ui.graphics.Brush.verticalGradient(
+                    listOf(
+                        com.example.ui.theme.AccessBackgroundDeep,
+                        AccessBackground
+                    )
+                )
+            )
     ) {
         // App Top Bar
         AccessTopBar(isUnlocked = false)

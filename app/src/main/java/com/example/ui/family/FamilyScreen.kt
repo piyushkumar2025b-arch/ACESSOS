@@ -188,7 +188,14 @@ fun FamilyScreen(
     Column(
         modifier = modifier
             .fillMaxSize()
-            .background(AccessBackground)
+            .background(
+                androidx.compose.ui.graphics.Brush.verticalGradient(
+                    listOf(
+                        com.example.ui.theme.AccessBackgroundDeep,
+                        AccessBackground
+                    )
+                )
+            )
     ) {
         // App Top Bar
         AccessTopBar(
@@ -196,76 +203,54 @@ fun FamilyScreen(
             onLogoutClick = onBackToHome
         )
 
-        // Navigation Bar
-        Surface(
-            modifier = Modifier.fillMaxWidth(),
-            color = AccessSurfaceVariant,
-            border = BorderStroke(1.dp, AccessSurfaceBorder)
-        ) {
-            Row(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .padding(horizontal = 16.dp, vertical = 10.dp),
-                verticalAlignment = Alignment.CenterVertically,
-                horizontalArrangement = Arrangement.SpaceBetween
-            ) {
-                // Back Button
-                Button(
-                    onClick = {
-                        VibrationHelper.vibrateShort(context)
-                        onBackToHome()
-                    },
-                    colors = ButtonDefaults.buttonColors(containerColor = AccessPrimary),
-                    shape = RoundedCornerShape(14.dp),
-                    modifier = Modifier.testTag("family_back_button")
-                ) {
-                    Icon(
-                        imageVector = Icons.AutoMirrored.Filled.ArrowBack,
-                        contentDescription = "Back",
-                        tint = TextPrimary,
-                        modifier = Modifier.size(24.dp)
-                    )
-                    Spacer(modifier = Modifier.width(8.dp))
-                    Text(
-                        text = "HOME",
-                        fontSize = 18.sp,
-                        fontWeight = FontWeight.Bold,
-                        color = TextPrimary
-                    )
-                }
-
-                // Add Relative Button
-                Button(
+        // Professional screen header
+        com.example.ui.common.ScreenHeader(
+            title = "Family Circle",
+            subtitle = "One-tap calling & WhatsApp alerts",
+            icon = Icons.Default.Group,
+            accent = com.example.ui.theme.AccessSecondary,
+            onBack = {
+                VibrationHelper.vibrateShort(context)
+                onBackToHome()
+            },
+            action = {
+                androidx.compose.material3.Button(
                     onClick = {
                         VibrationHelper.vibrateShort(context)
                         showAddDialog = true
                     },
-                    colors = ButtonDefaults.buttonColors(containerColor = AccessTertiary),
+                    colors = androidx.compose.material3.ButtonDefaults.buttonColors(
+                        containerColor = AccessTertiary
+                    ),
                     shape = RoundedCornerShape(14.dp),
-                    modifier = Modifier.testTag("add_family_button")
+                    modifier = Modifier.testTag("add_family_button"),
+                    contentPadding = androidx.compose.foundation.layout.PaddingValues(
+                        horizontal = 14.dp, vertical = 10.dp
+                    )
                 ) {
                     Icon(
                         imageVector = Icons.Default.Add,
                         contentDescription = "Add Contact",
                         tint = AccessBackground,
-                        modifier = Modifier.size(24.dp)
+                        modifier = Modifier.size(20.dp)
                     )
                     Spacer(modifier = Modifier.width(6.dp))
                     Text(
-                        text = "NEW CONTACT",
-                        fontSize = 18.sp,
+                        text = "ADD",
+                        fontSize = 15.sp,
                         fontWeight = FontWeight.Bold,
                         color = AccessBackground
                     )
                 }
-            }
-        }
+            },
+            modifier = Modifier.padding(horizontal = 20.dp, vertical = 14.dp)
+        )
 
         // Contact List & Hub
         LazyColumn(
             modifier = Modifier
                 .fillMaxSize()
-                .padding(horizontal = 16.dp, vertical = 14.dp),
+                .padding(horizontal = 20.dp, vertical = 8.dp),
             verticalArrangement = Arrangement.spacedBy(16.dp)
         ) {
             // Family Care Hub Cloud Banner

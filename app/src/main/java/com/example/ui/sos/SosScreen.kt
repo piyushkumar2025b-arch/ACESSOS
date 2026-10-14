@@ -143,7 +143,14 @@ fun SosScreen(
     Column(
         modifier = modifier
             .fillMaxSize()
-            .background(AccessBackground)
+            .background(
+                androidx.compose.ui.graphics.Brush.verticalGradient(
+                    listOf(
+                        com.example.ui.theme.AccessBackgroundDeep,
+                        AccessBackground
+                    )
+                )
+            )
     ) {
         // App Top Bar
         AccessTopBar(
@@ -151,65 +158,23 @@ fun SosScreen(
             onLogoutClick = onBack
         )
 
-        // Navigation Bar
-        Surface(
-            modifier = Modifier.fillMaxWidth(),
-            color = AccessDangerContainer,
-            border = BorderStroke(1.dp, AccessDanger)
-        ) {
-            Row(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .padding(horizontal = 16.dp, vertical = 10.dp),
-                verticalAlignment = Alignment.CenterVertically,
-                horizontalArrangement = Arrangement.SpaceBetween
-            ) {
-                Button(
-                    onClick = {
-                        VibrationHelper.vibrateShort(context)
-                        onBack()
-                    },
-                    colors = ButtonDefaults.buttonColors(containerColor = AccessPrimary),
-                    shape = RoundedCornerShape(14.dp),
-                    modifier = Modifier.testTag("sos_back_button")
-                ) {
-                    Icon(
-                        imageVector = Icons.AutoMirrored.Filled.ArrowBack,
-                        contentDescription = "Back",
-                        tint = TextPrimary,
-                        modifier = Modifier.size(24.dp)
-                    )
-                    Spacer(modifier = Modifier.width(8.dp))
-                    Text(
-                        text = "BACK",
-                        fontSize = 18.sp,
-                        fontWeight = FontWeight.Bold,
-                        color = TextPrimary
-                    )
-                }
-
-                Row(verticalAlignment = Alignment.CenterVertically) {
-                    Icon(
-                        imageVector = Icons.Default.Warning,
-                        contentDescription = "Alert Mode",
-                        tint = Color(0xFFFF8A80),
-                        modifier = Modifier.size(24.dp)
-                    )
-                    Spacer(modifier = Modifier.width(6.dp))
-                    Text(
-                        text = "EMERGENCY DISPATCH",
-                        fontSize = 16.sp,
-                        fontWeight = FontWeight.Bold,
-                        color = Color(0xFFFF8A80)
-                    )
-                }
-            }
-        }
+        // Professional screen header (emergency context)
+        com.example.ui.common.ScreenHeader(
+            title = "Emergency SOS",
+            subtitle = "GPS alert to your family circle",
+            icon = Icons.Default.Emergency,
+            accent = AccessDanger,
+            onBack = {
+                VibrationHelper.vibrateShort(context)
+                onBack()
+            },
+            modifier = Modifier.padding(horizontal = 20.dp, vertical = 14.dp)
+        )
 
         LazyColumn(
             modifier = Modifier
                 .fillMaxSize()
-                .padding(horizontal = 16.dp, vertical = 14.dp),
+                .padding(horizontal = 20.dp, vertical = 8.dp),
             verticalArrangement = Arrangement.spacedBy(16.dp),
             horizontalAlignment = Alignment.CenterHorizontally
         ) {
