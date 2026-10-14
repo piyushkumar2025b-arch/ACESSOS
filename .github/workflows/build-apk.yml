@@ -50,7 +50,7 @@ jobs:
           echo "ANDROID_HOME=$RUNNER_TEMP/android-sdk" >> $GITHUB_ENV
           echo "PATH=$RUNNER_TEMP/android-sdk/cmdline-tools/latest/bin:$RUNNER_TEMP/android-sdk/platform-tools:$PATH" >> $GITHUB_ENV
 
-      - name: Install Android command-line tools and SDK components
+      - name: Install Android command-line tools and SDK components (robust, with fallback)
         shell: bash
         env:
           ANDROID_SDK_ROOT: ${{ env.ANDROID_SDK_ROOT }}
@@ -60,8 +60,9 @@ jobs:
           mkdir -p "$ANDROID_SDK_ROOT"
           cd "$RUNNER_TEMP"
 
+          # ensure sdkmanager is available (download if required)
           if [ -x "${ANDROID_SDK_ROOT}/cmdline-tools/latest/bin/sdkmanager" ]; then
-            echo "sdkmanager already available"
+            echo "sdkmanager already available: ${ANDROID_SDK_ROOT}/cmdline-tools/latest/bin/sdkmanager"
           else
             echo "Downloading Android command-line tools..."
             CLI_ZIP="commandlinetools-linux-latest.zip"
@@ -79,12 +80,12 @@ jobs:
             done
 
             if [ "$downloaded" != "true" ]; then
-              echo "Failed to download Android command-line tools. Attempting preinstalled SDK path..."
+              echo "Failed to download Android command-line tools. Attempting to copy preinstalled sdkmanager..."
               if [ -x "/usr/local/lib/android/sdk/cmdline-tools/latest/bin/sdkmanager" ]; then
                 mkdir -p "$ANDROID_SDK_ROOT/cmdline-tools"
                 cp -a /usr/local/lib/android/sdk/cmdline-tools/latest "$ANDROID_SDK_ROOT/cmdline-tools/"
               else
-                echo "No usable sdkmanager found."
+                echo "No usable sdkmanager found on runner."
                 exit 1
               fi
             else
@@ -100,18 +101,17 @@ jobs:
 
           mkdir -p "$ANDROID_SDK_ROOT/platform-tools"
           export PATH="$ANDROID_SDK_ROOT/cmdline-tools/latest/bin:$ANDROID_SDK_ROOT/platform-tools:$PATH"
-
           echo "Using sdkmanager at: $(command -v sdkmanager || true)"
 
           echo "Accepting SDK licenses..."
-          yes 2>/dev/null | sdkmanager --sdk_root="$ANDROID_SDK_ROOT" --licenses || true
+          yes | sdkmanager --sdk_root="$ANDROID_SDK_ROOT" --licenses || true
 
           install_with_retries() {
             pkgs=("$@")
             attempts=3
             for i in $(seq 1 $attempts); do
               echo "Installing ${pkgs[*]} (attempt $i/$attempts)..."
-              if yes 2>/dev/null | sdkmanager --sdk_root="$ANDROID_SDK_ROOT" "${pkgs[@]}"; then
+              if yes | sdkmanager --sdk_root="$ANDROID_SDK_ROOT" "${pkgs[@]}"; then
                 echo "Installed ${pkgs[*]}"
                 return 0
               fi
@@ -121,11 +121,21 @@ jobs:
             return 1
           }
 
-          # NOTE: compileSdk in the project is 36 — install matching platform & build-tools
-          if ! install_with_retries "platform-tools" "platforms;android-36" "build-tools;36.0.0" "cmdline-tools;latest"; then
-            echo "Final sdkmanager install failed. Dumping sdkmanager --list for debugging:"
-            sdkmanager --sdk_root="$ANDROID_SDK_ROOT" --list || true
-            exit 1
+          # Try compileSdk 36 first (project uses compileSdk 36); fallback to 33 if unavailable
+          PKGS_36=( "platform-tools" "platforms;android-36" "build-tools;36.0.0" "cmdline-tools;latest" )
+          PKGS_33=( "platform-tools" "platforms;android-33" "build-tools;33.0.2" "cmdline-tools;latest" )
+
+          if install_with_retries "${PKGS_36[@]}"; then
+            echo "Installed Android platform 36/tooling."
+          else
+            echo "Failed to install packages for android-36, trying fallback android-33..."
+            if install_with_retries "${PKGS_33[@]}"; then
+              echo "Installed Android platform 33/tooling as fallback."
+            else
+              echo "Both android-36 and android-33 installs failed. Dumping sdkmanager --list for debugging:"
+              sdkmanager --sdk_root="$ANDROID_SDK_ROOT" --list || true
+              exit 1
+            fi
           fi
 
           sdkmanager --sdk_root="$ANDROID_SDK_ROOT" --list || true
@@ -186,21 +196,23 @@ jobs:
           STORE_PASSWORD: ${{ secrets.STORE_PASSWORD }}
           KEY_PASSWORD: ${{ secrets.KEY_PASSWORD }}
           KEYSTORE_BASE64: ${{ secrets.KEYSTORE_BASE64 }}
+          KEYSTORE_PATH: ${{ secrets.KEYSTORE_PATH }}
         run: |
           set -eux
           echo "Building AccessOS Release APK..."
-          # Prefer a keystore provided as base64 secret; otherwise, fall back to KEYSTORE_PATH if present
-          if [ -n "$KEYSTORE_BASE64" ]; then
+          # Decode base64 keystore when provided
+          if [ -n "${KEYSTORE_BASE64:-}" ]; then
             echo "Decoding KEYSTORE_BASE64 to my-upload-key.jks"
-            echo "$KEYSTORE_BASE64" | base64 -d > my-upload-key.jks
-            KEYSTORE_PATH="my-upload-key.jks"
+            echo "${KEYSTORE_BASE64}" | base64 -d > my-upload-key.jks
+            export KEYSTORE_PATH="my-upload-key.jks"
           fi
 
-          if [ -n "$STORE_PASSWORD" ] && [ -f "${KEYSTORE_PATH:-my-upload-key.jks}" ]; then
-            echo "Release keystore detected; assembling release..."
+          # If KEYSTORE_PATH is provided as a secret pointing to a repo file path, it'll be used.
+          if [ -n "${STORE_PASSWORD:-}" ] && [ -f "${KEYSTORE_PATH:-my-upload-key.jks}" ]; then
+            echo "Using provided keystore at ${KEYSTORE_PATH:-my-upload-key.jks} to sign release"
             ./gradlew assembleRelease --stacktrace --no-daemon --console=plain
           else
-            echo "Release keystore/secrets not detected. Creating installable debug-signed APK instead..."
+            echo "Release keystore/secrets not detected. Building debug-signed APK instead to keep CI green."
             ./gradlew assembleDebug --stacktrace --no-daemon --console=plain
           fi
 
