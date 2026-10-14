@@ -257,14 +257,16 @@ fun LockScreen(
                         border = BorderStroke(1.dp, if (connectionState is HardwareConnectionState.Connected) AccessSuccess.copy(alpha = 0.4f) else AccessSurfaceBorder)
                     ) {
                         Row(
-                            modifier = Modifier.padding(horizontal = 14.dp, vertical = 8.dp),
+                            modifier = Modifier
+                                .padding(horizontal = 12.dp, vertical = 10.dp)
+                                .fillMaxWidth(),
                             verticalAlignment = Alignment.CenterVertically
                         ) {
                             Icon(
                                 imageVector = if (connectionState is HardwareConnectionState.Connected) Icons.Default.CheckCircle else Icons.Default.DeveloperBoard,
                                 contentDescription = "Hardware Status",
                                 tint = if (connectionState is HardwareConnectionState.Connected) AccessSuccess else AccessTertiary,
-                                modifier = Modifier.size(18.dp)
+                                modifier = Modifier.size(22.dp)
                             )
                             Spacer(modifier = Modifier.width(8.dp))
                             Text(

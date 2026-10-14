@@ -32,6 +32,7 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.testTag
@@ -39,11 +40,11 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.runtime.collectAsState
 import androidx.compose.ui.unit.sp
-import com.example.ui.theme.AccessBackground
+import com.example.ui.theme.AccessBackgroundDeep
 import com.example.ui.theme.AccessDanger
+import com.example.ui.theme.AccessPrimary
 import com.example.ui.theme.AccessPrimaryLight
 import com.example.ui.theme.AccessSuccess
-import com.example.ui.theme.AccessSurface
 import com.example.ui.theme.AccessSurfaceBorder
 import com.example.ui.theme.AccessTertiary
 import com.example.ui.theme.TextAccent
@@ -75,15 +76,21 @@ fun AccessTopBar(
 
     Surface(
         modifier = modifier.fillMaxWidth(),
-        color = AccessSurface,
-        shape = RoundedCornerShape(bottomStart = 24.dp, bottomEnd = 24.dp),
-        border = BorderStroke(1.dp, AccessSurfaceBorder),
-        shadowElevation = 6.dp
+        color = AccessBackgroundDeep,
+        shape = RoundedCornerShape(bottomStart = 26.dp, bottomEnd = 26.dp),
+        border = BorderStroke(1.dp, AccessSurfaceBorder.copy(alpha = 0.6f)),
+        shadowElevation = 10.dp
     ) {
         Column(
             modifier = Modifier
                 .fillMaxWidth()
-                .padding(horizontal = 20.dp, vertical = 14.dp)
+                .background(
+                    Brush.verticalGradient(
+                        listOf(AccessPrimary.copy(alpha = 0.28f), Color.Transparent)
+                    )
+                )
+                .padding(horizontal = 20.dp, vertical = 16.dp),
+            verticalArrangement = Arrangement.spacedBy(12.dp)
         ) {
             // Offline Status Strip
             if (!isOnline) {
@@ -151,7 +158,7 @@ fun AccessTopBar(
                 // Live Clock Pill (Clickable to change Time Zone)
                 Surface(
                     shape = RoundedCornerShape(12.dp),
-                    color = AccessBackground,
+                    color = AccessBackgroundDeep.copy(alpha = 0.7f),
                     border = BorderStroke(1.dp, AccessSurfaceBorder),
                     modifier = Modifier.clickable {
                         VibrationHelper.vibrateShort(context)
@@ -185,8 +192,6 @@ fun AccessTopBar(
                     }
                 }
             }
-
-            Spacer(modifier = Modifier.height(10.dp))
 
             // Bottom row: Status badge + DB Sync Indicator + Logout action if unlocked
             Row(

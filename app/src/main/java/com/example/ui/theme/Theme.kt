@@ -8,22 +8,28 @@ private val AccessOsColorScheme = darkColorScheme(
     primary = AccessPrimaryLight,
     onPrimary = AccessBackground,
     primaryContainer = AccessPrimary,
-    onPrimaryContainer = TextPrimary,
+    onPrimaryContainer = AccessOnPrimary,
     secondary = AccessSecondary,
-    onSecondary = TextPrimary,
+    onSecondary = AccessBackground,
+    secondaryContainer = AccessSecondarySoft,
+    onSecondaryContainer = TextPrimary,
     tertiary = AccessTertiary,
     onTertiary = AccessBackground,
+    tertiaryContainer = AccessTertiarySoft,
+    onTertiaryContainer = TextAccent,
     background = AccessBackground,
     onBackground = TextPrimary,
     surface = AccessSurface,
     onSurface = TextPrimary,
     surfaceVariant = AccessSurfaceVariant,
     onSurfaceVariant = TextSecondary,
+    surfaceTint = AccessPrimaryLight,
     error = AccessDanger,
     onError = TextPrimary,
     errorContainer = AccessDangerContainer,
     onErrorContainer = TextPrimary,
-    outline = AccessSurfaceBorder
+    outline = AccessSurfaceBorder,
+    outlineVariant = AccessSurfaceBorder.copy(alpha = 0.5f)
 )
 
 @Composable

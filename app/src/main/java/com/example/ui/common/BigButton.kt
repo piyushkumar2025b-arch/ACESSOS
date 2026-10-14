@@ -1,6 +1,7 @@
 package com.example.ui.common
 
 import androidx.compose.foundation.BorderStroke
+import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
@@ -11,6 +12,8 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.automirrored.filled.ArrowForwardIos
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.Icon
@@ -19,6 +22,7 @@ import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.platform.LocalContext
@@ -56,40 +60,46 @@ fun BigButton(
         },
         modifier = modifier
             .fillMaxWidth()
-            .heightIn(min = 78.dp)
+            .heightIn(min = 92.dp)
             .testTag(testTag),
-        shape = RoundedCornerShape(20.dp),
+        shape = RoundedCornerShape(AccessDs.CardRadius),
         colors = CardDefaults.cardColors(
             containerColor = containerColor,
             contentColor = contentColor
         ),
-        border = BorderStroke(2.dp, borderColor),
-        elevation = CardDefaults.cardElevation(defaultElevation = 4.dp, pressedElevation = 1.dp)
+        border = BorderStroke(1.dp, borderColor.copy(alpha = 0.7f)),
+        elevation = CardDefaults.cardElevation(defaultElevation = 6.dp, pressedElevation = 2.dp)
     ) {
         Row(
             modifier = Modifier
                 .fillMaxWidth()
-                .padding(horizontal = 20.dp, vertical = 18.dp),
+                .background(
+                    Brush.verticalGradient(
+                        listOf(Color.White.copy(alpha = 0.06f), Color.Transparent)
+                    )
+                )
+                .padding(horizontal = 18.dp, vertical = 16.dp),
             verticalAlignment = Alignment.CenterVertically,
             horizontalArrangement = Arrangement.Start
         ) {
-            // Prominent Icon Box
+            // Icon rail
             Surface(
-                shape = RoundedCornerShape(16.dp),
-                color = contentColor.copy(alpha = 0.15f),
-                modifier = Modifier.size(56.dp)
+                shape = RoundedCornerShape(AccessDs.CardRadiusSmall),
+                color = contentColor.copy(alpha = 0.14f),
+                border = BorderStroke(1.dp, contentColor.copy(alpha = 0.22f)),
+                modifier = Modifier.size(58.dp)
             ) {
-                Icon(
-                    imageVector = icon,
-                    contentDescription = title,
-                    tint = contentColor,
-                    modifier = Modifier
-                        .padding(10.dp)
-                        .size(36.dp)
-                )
+                androidx.compose.foundation.layout.Box(contentAlignment = Alignment.Center) {
+                    Icon(
+                        imageVector = icon,
+                        contentDescription = title,
+                        tint = contentColor,
+                        modifier = Modifier.size(30.dp)
+                    )
+                }
             }
 
-            Spacer(modifier = Modifier.width(18.dp))
+            Spacer(modifier = Modifier.width(16.dp))
 
             // Text column
             Column(
@@ -98,20 +108,20 @@ fun BigButton(
             ) {
                 Text(
                     text = title,
-                    fontSize = 24.sp,
+                    fontSize = 21.sp,
                     fontWeight = FontWeight.Bold,
                     color = contentColor,
-                    lineHeight = 30.sp
+                    lineHeight = 27.sp
                 )
 
                 if (subtitle != null) {
                     Text(
                         text = subtitle,
-                        fontSize = 17.sp,
+                        fontSize = 14.sp,
                         fontWeight = FontWeight.Medium,
-                        color = contentColor.copy(alpha = 0.85f),
-                        lineHeight = 22.sp,
-                        modifier = Modifier.padding(top = 4.dp)
+                        color = contentColor.copy(alpha = 0.78f),
+                        lineHeight = 19.sp,
+                        modifier = Modifier.padding(top = 3.dp)
                     )
                 }
 
@@ -119,18 +129,27 @@ fun BigButton(
                     Surface(
                         shape = RoundedCornerShape(8.dp),
                         color = badgeColor,
-                        modifier = Modifier.padding(top = 6.dp)
+                        border = BorderStroke(1.dp, badgeTextColor.copy(alpha = 0.35f)),
+                        modifier = Modifier.padding(top = 8.dp)
                     ) {
                         Text(
                             text = badgeText,
-                            fontSize = 14.sp,
-                            fontWeight = FontWeight.Bold,
+                            fontSize = 11.sp,
+                            fontWeight = FontWeight.ExtraBold,
+                            letterSpacing = 0.8.sp,
                             color = badgeTextColor,
-                            modifier = Modifier.padding(horizontal = 8.dp, vertical = 3.dp)
+                            modifier = Modifier.padding(horizontal = 9.dp, vertical = 4.dp)
                         )
                     }
                 }
             }
+
+            Icon(
+                imageVector = Icons.AutoMirrored.Filled.ArrowForwardIos,
+                contentDescription = null,
+                tint = contentColor.copy(alpha = 0.45f),
+                modifier = Modifier.size(18.dp)
+            )
         }
     }
 }

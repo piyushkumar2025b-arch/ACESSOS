@@ -38,6 +38,7 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.testTag
@@ -45,13 +46,15 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.example.domain.model.UserSession
+import com.example.ui.common.AccessDs
 import com.example.ui.common.AccessTopBar
 import com.example.ui.common.BigButton
-import com.example.ui.common.ConnectionStatusChip
+import com.example.ui.common.SectionHeader
 import com.example.ui.common.DeviceStatusCard
 import com.example.ui.common.TimeZoneSelectorDialog
 import com.example.ui.device.HardwareDeviceViewModel
 import com.example.ui.theme.AccessBackground
+import com.example.ui.theme.AccessBackgroundDeep
 import com.example.ui.theme.AccessDanger
 import com.example.ui.theme.AccessDangerContainer
 import com.example.ui.theme.AccessPrimary
@@ -98,7 +101,11 @@ fun HomeScreen(
     Column(
         modifier = modifier
             .fillMaxSize()
-            .background(AccessBackground)
+            .background(
+                Brush.verticalGradient(
+                    listOf(AccessBackgroundDeep, AccessBackground)
+                )
+            )
     ) {
         // High-Contrast Accessible Top Bar
         AccessTopBar(
@@ -112,93 +119,27 @@ fun HomeScreen(
                 .fillMaxSize()
                 .weight(1f)
                 .verticalScroll(rememberScrollState())
-                .padding(horizontal = 20.dp, vertical = 14.dp),
-            verticalArrangement = Arrangement.spacedBy(14.dp)
+                .padding(horizontal = 20.dp, vertical = 16.dp),
+            verticalArrangement = Arrangement.spacedBy(18.dp)
         ) {
-            // Live Real-Time Clock & Welcome Banner with Connection Status Chip
-            Card(
-                modifier = Modifier.fillMaxWidth(),
-                shape = RoundedCornerShape(20.dp),
-                colors = CardDefaults.cardColors(
-                    containerColor = AccessSurface,
-                    contentColor = TextPrimary
-                ),
-                border = BorderStroke(1.dp, AccessSurfaceBorder)
-            ) {
-                Column(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .padding(horizontal = 20.dp, vertical = 16.dp)
-                ) {
-                    Row(
-                        modifier = Modifier.fillMaxWidth(),
-                        verticalAlignment = Alignment.CenterVertically,
-                        horizontalArrangement = Arrangement.SpaceBetween
-                    ) {
-                        Column(modifier = Modifier.weight(1f)) {
-                            Text(
-                                text = "Welcome, ${session.userName} 👋",
-                                fontSize = 24.sp,
-                                fontWeight = FontWeight.Bold,
-                                color = TextPrimary
-                            )
-                            Text(
-                                text = liveDateString,
-                                fontSize = 15.sp,
-                                fontWeight = FontWeight.Medium,
-                                color = TextSecondary,
-                                modifier = Modifier.padding(top = 2.dp)
-                            )
-                        }
-
-                        Surface(
-                            shape = RoundedCornerShape(12.dp),
-                            color = AccessBackground,
-                            border = BorderStroke(1.dp, AccessSurfaceBorder),
-                            modifier = Modifier.clickable {
-                                VibrationHelper.vibrateShort(context)
-                                showTimeZoneDialog = true
-                            }
-                        ) {
-                            Column(
-                                modifier = Modifier.padding(horizontal = 12.dp, vertical = 8.dp),
-                                horizontalAlignment = Alignment.End
-                            ) {
-                                Text(
-                                    text = liveTimeString,
-                                    fontSize = 20.sp,
-                                    fontWeight = FontWeight.Black,
-                                    color = TextAccent
-                                )
-                                Text(
-                                    text = "🌐 $timeZoneLabel",
-                                    fontSize = 11.sp,
-                                    fontWeight = FontWeight.Bold,
-                                    color = AccessPrimaryLight
-                                )
-                            }
-                        }
-                    }
-
-                    Spacer(modifier = Modifier.height(10.dp))
-
-                    Row(
-                        modifier = Modifier.fillMaxWidth(),
-                        verticalAlignment = Alignment.CenterVertically,
-                        horizontalArrangement = Arrangement.SpaceBetween
-                    ) {
-                        Text(
-                            text = "Care Circle Active • Offline Vault Locked",
-                            fontSize = 12.sp,
-                            fontWeight = FontWeight.Medium,
-                            color = TextSecondary
-                        )
-
-                        ConnectionStatusChip(connectionState = connectionState)
-                    }
+            // ── HERO: Welcome + live clock + status ──
+            HeroWelcomeCard(
+                userName = session.userName,
+                liveDateString = liveDateString,
+                liveTimeString = liveTimeString,
+                timeZoneLabel = timeZoneLabel,
+                connectionState = connectionState,
+                onClockClick = {
+                    VibrationHelper.vibrateShort(context)
+                    showTimeZoneDialog = true
                 }
-            }
+            )
 
+            // ── HARDWARE ──
+            SectionHeader(
+                eyebrow = "Connected care hardware",
+                title = "Smart Safety Device"
+            )
             // DEDICATED ESP32 PHYSICAL HARDWARE CARD
             DeviceStatusCard(
                 connectionState = connectionState,
@@ -223,6 +164,11 @@ fun HomeScreen(
                 }
             )
 
+            // ── EMERGENCY ──
+            SectionHeader(
+                eyebrow = "Always within reach",
+                title = "Emergency"
+            )
             // PROMINENT EMERGENCY (SOS) BUTTON
             BigButton(
                 title = "Emergency (SOS)",
@@ -238,6 +184,11 @@ fun HomeScreen(
                 testTag = "home_sos_button"
             )
 
+            // ── DAILY CARE ──
+            SectionHeader(
+                eyebrow = "Daily care",
+                title = "Your Services"
+            )
             // CORE DASHBOARD SECTIONS
             Column(
                 modifier = Modifier.fillMaxWidth(),

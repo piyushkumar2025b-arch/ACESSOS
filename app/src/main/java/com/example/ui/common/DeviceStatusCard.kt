@@ -2,6 +2,7 @@ package com.example.ui.common
 
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.foundation.BorderStroke
+import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -41,6 +42,7 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.text.font.FontWeight
@@ -100,20 +102,27 @@ fun DeviceStatusCard(
         modifier = modifier
             .fillMaxWidth()
             .testTag("device_status_card"),
-        shape = RoundedCornerShape(20.dp),
+        shape = RoundedCornerShape(AccessDs.CardRadius),
         colors = CardDefaults.cardColors(
             containerColor = AccessSurface,
             contentColor = TextPrimary
         ),
         border = BorderStroke(
             width = if (isConnected) 2.dp else 1.dp,
-            color = if (isConnected) AccessSuccess.copy(alpha = 0.6f) else AccessSurfaceBorder
-        )
+            color = if (isConnected) AccessSuccess.copy(alpha = 0.65f) else AccessDs.BorderSubtle
+        ),
+        elevation = CardDefaults.cardElevation(defaultElevation = 6.dp)
     ) {
         Column(
             modifier = Modifier
                 .fillMaxWidth()
-                .padding(18.dp)
+                .background(
+                    Brush.verticalGradient(
+                        listOf(Color.White.copy(alpha = 0.04f), Color.Transparent)
+                    )
+                )
+                .padding(20.dp),
+            verticalArrangement = Arrangement.spacedBy(14.dp)
         ) {
             // Header: Hardware Title & Connection Chip
             Row(
@@ -126,16 +135,20 @@ fun DeviceStatusCard(
                     modifier = Modifier.weight(1f)
                 ) {
                     Surface(
-                        shape = RoundedCornerShape(12.dp),
-                        color = if (isConnected) AccessSuccess.copy(alpha = 0.15f) else AccessPrimary.copy(alpha = 0.1f),
-                        modifier = Modifier.size(42.dp)
+                        shape = RoundedCornerShape(AccessDs.CardRadiusSmall),
+                        color = if (isConnected) AccessSuccess.copy(alpha = 0.16f) else AccessPrimary.copy(alpha = 0.14f),
+                        border = BorderStroke(
+                            1.dp,
+                            if (isConnected) AccessSuccess.copy(alpha = 0.4f) else AccessPrimary.copy(alpha = 0.35f)
+                        ),
+                        modifier = Modifier.size(48.dp)
                     ) {
                         Box(contentAlignment = Alignment.Center) {
                             Icon(
                                 imageVector = if (isConnected) Icons.Default.BluetoothConnected else Icons.Default.DeveloperBoard,
                                 contentDescription = "Hardware Board",
-                                tint = if (isConnected) AccessSuccess else AccessPrimary,
-                                modifier = Modifier.size(24.dp)
+                                tint = if (isConnected) AccessSuccess else AccessPrimaryLight,
+                                modifier = Modifier.size(26.dp)
                             )
                         }
                     }
@@ -144,13 +157,13 @@ fun DeviceStatusCard(
 
                     Column {
                         Text(
-                            text = "AccessOS Smart Hardware",
-                            fontSize = 17.sp,
+                            text = if (isConnected) "Hardware Linked" else "AccessOS Smart Hardware",
+                            fontSize = 18.sp,
                             fontWeight = FontWeight.Bold,
                             color = TextPrimary
                         )
                         Text(
-                            text = "ESP32 SOS Button & OLED",
+                            text = "ESP32 · SOS Button · OLED",
                             fontSize = 13.sp,
                             fontWeight = FontWeight.Medium,
                             color = TextSecondary
@@ -160,8 +173,6 @@ fun DeviceStatusCard(
 
                 ConnectionStatusChip(connectionState = connectionState)
             }
-
-            Spacer(modifier = Modifier.height(14.dp))
 
             // Sub-status and Details Box
             Surface(
