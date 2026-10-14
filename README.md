@@ -14,6 +14,21 @@ LED and buzzer feedback.
 - Wiring guide: `hardware/HARDWARE_SETUP.md`
 - CI: `.github/workflows/build-apk.yml` builds the APK on every push to `main`
 
+### 📚 Full documentation set (`docs/`)
+
+| # | Guide | Read it to… |
+|---|---|---|
+| 01 | [Start Here](docs/01-start-here.md) | get the map + 30-minute path |
+| 02 | [Parts & Shopping List](docs/02-parts-list.md) | buy the exact kit |
+| 03 | [Wiring Guide](docs/03-wiring-guide.md) | build the breadboard |
+| 04 | [Firmware Flashing](docs/04-firmware-flashing.md) | get the OLED saying READY |
+| 05 | [App Installation](docs/05-app-installation.md) | install APK or build it |
+| 06 | [BLE Pairing](docs/06-pairing-ble.md) | connect phone ↔ ESP32 |
+| 07 | [Data, Cloud & NFC](docs/07-data-cloud-nfc.md) | Firebase, vault, care cards |
+| 08 | [Testing Playbook](docs/08-testing-playbook.md) | prove everything works |
+| 09 | [Troubleshooting](docs/09-troubleshooting.md) | fix any failure fast |
+| 10 | [Any-Machine Setup](docs/10-any-machine-setup.md) | replicate the lab on any PC |
+
 ---
 
 ## 1. What you need (software)
